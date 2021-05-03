@@ -1,0 +1,113 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend-deploy
+  labels:
+    app: my-app
+    tier: backend
+spec:
+  selector:
+    matchLabels:
+      app: my-app
+      tier: backend
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 20%
+      maxUnavailable: 20%
+  template:
+    metadata:
+      labels:
+        app: my-app
+        tier: backend
+    spec:
+      serviceAccountName: my-ksa
+      volumes:
+        - name: www-volume
+          emptyDir: {}
+        - name: nginx-template-volume
+          configMap:
+            name: nginx-template
+        - name: secret-volume
+          secret:
+            secretName: secret-env
+      containers:
+        - name: backend-app
+          image: backend-app:latest
+          volumeMounts:
+            - name: www-volume
+              mountPath: /var/www/html
+            - name: secret-volume
+              mountPath: /srv/app/.env
+              subPath: .env.backend
+              readOnly: true
+          ports:
+            - name: fpm-port
+              containerPort: 9000
+          readinessProbe:
+            initialDelaySeconds: 5
+            timeoutSeconds: 3
+            periodSeconds: 10
+            tcpSocket:
+              port: fpm-port
+          livenessProbe:
+            initialDelaySeconds: 5
+            timeoutSeconds: 3
+            periodSeconds: 10
+            tcpSocket:
+              port: fpm-port
+          lifecycle:
+            postStart:
+              exec:
+                command: ["/bin/sh", "-c", "cp -a /srv/app/. /var/www/html"]
+          resources:
+            limits:
+              cpu: 1000m
+              memory: 2Gi
+        - name: backend-nginx
+          image: nginx:stable-alpine
+          env:
+            - name: NGINX_ROOT
+              value: /var/www/html/web
+            - name: NGINX_GLB_IP
+              value: 8.8.8.8
+          volumeMounts:
+            - name: www-volume
+              mountPath: /var/www/html
+            - name: nginx-template-volume
+              mountPath: /etc/nginx/templates/default.conf.template
+              subPath: backend.conf
+          ports:
+            - name: api-port
+              containerPort: 3000
+          readinessProbe:
+            initialDelaySeconds: 5
+            timeoutSeconds: 3
+            periodSeconds: 10
+            httpGet:
+              port: api-port
+              path: /ping
+          livenessProbe:
+            initialDelaySeconds: 5
+            timeoutSeconds: 3
+            periodSeconds: 10
+            httpGet:
+              port: api-port
+              path: /ping
+          resources:
+            limits:
+              cpu: 500m
+              memory: 1Gi
+---
+apiVersion: autoscaling/v1
+kind: HorizontalPodAutoscaler
+metadata:
+  name: backend-hpa
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: backend-deploy
+  minReplicas: 2
+  maxReplicas: 8
+  targetCPUUtilizationPercentage: 60

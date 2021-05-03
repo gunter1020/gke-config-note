@@ -1,0 +1,73 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend-deploy
+  labels:
+    app: my-app
+    tier: frontend
+spec:
+  selector:
+    matchLabels:
+      app: my-app
+      tier: frontend
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 20%
+      maxUnavailable: 20%
+  template:
+    metadata:
+      labels:
+        app: my-app
+        tier: frontend
+    spec:
+      volumes:
+        - name: nginx-template-volume
+          configMap:
+            name: nginx-template
+      containers:
+        - name: frontend-app
+          image: frontend-app:latest
+          env:
+            - name: NGINX_ROOT
+              value: /var/www/html
+            - name: NGINX_GLB_IP
+              value: 8.8.8.8
+            - name: NGINX_BACKEND_API
+              value: http://backend-service.default:3000
+          ports:
+            - name: http-port
+              containerPort: 80
+          volumeMounts:
+            - name: nginx-template-volume
+              mountPath: /etc/nginx/templates/default.conf.template
+              subPath: frontend.conf
+          readinessProbe:
+            initialDelaySeconds: 5
+            timeoutSeconds: 3
+            periodSeconds: 10
+            tcpSocket:
+              port: http-port
+          livenessProbe:
+            initialDelaySeconds: 5
+            timeoutSeconds: 3
+            periodSeconds: 10
+            tcpSocket:
+              port: http-port
+          resources:
+            limits:
+              cpu: 500m
+              memory: 1Gi
+---
+apiVersion: autoscaling/v1
+kind: HorizontalPodAutoscaler
+metadata:
+  name: frontend-hpa
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: frontend-deploy
+  minReplicas: 2
+  maxReplicas: 8
+  targetCPUUtilizationPercentage: 60

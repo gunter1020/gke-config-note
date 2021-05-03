@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: secret-env
+stringData:
+  .env.backend: |
+    YII_ENV=prod
+    YII_DEBUG=false
+    COOKIE_VALIDATION_KEY=AAAA-1111-BBBB-2222-CCCC-3333
+    DB_HOST=main-db.prod.com
+    DB_NAME=prod_system
+    DB_USER=root
+    DB_PASS=prod_root_pass
+    SLAVE_DB_HOST=slave-db.prod.com
