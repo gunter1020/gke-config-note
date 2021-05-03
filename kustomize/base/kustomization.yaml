@@ -1,0 +1,11 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - service-account.yaml
+  - pod/secret.yaml
+  - pod/nginx-config.yaml
+  - pod/frontend.yaml
+  - pod/backend.yaml
+  - net/service.yaml
+  - net/backend-config.yaml
+  - net/ingress.yaml
