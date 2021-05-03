@@ -1,0 +1,12 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend-deploy
+spec:
+  template:
+    spec:
+      containers:
+        - name: frontend-app
+          env:
+            - name: NGINX_BACKEND_API
+              value: http://backend-service.prod-system:3000

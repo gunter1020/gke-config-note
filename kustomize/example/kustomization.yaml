@@ -1,0 +1,25 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: prod-system
+commonLabels:
+  app: prod-app
+patchesStrategicMerge:
+  - patches/env-app.yaml
+  - patches/env-nginx.yaml
+  - patches/glb-public-ip.yaml
+  - patches/gke-service-account.yaml
+resources:
+  - resources/namespace.yaml
+  - resources/job.yaml
+bases:
+  - ../base
+images:
+  - name: backend-app
+    newName: gcr.io/GCP_PROJECT/prod-yii
+    newTag: latest
+  - name: frontend-app
+    newName: gcr.io/GCP_PROJECT/prod-vue
+    newTag: latest
+  - name: yii-migrate
+    newName: gcr.io/GCP_PROJECT/prod-yii
+    newTag: latest

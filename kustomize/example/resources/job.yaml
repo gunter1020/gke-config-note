@@ -1,0 +1,31 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: migrate-job
+spec:
+  backoffLimit: 5
+  template:
+    spec:
+      restartPolicy: Never
+      volumes:
+        - name: secret-volume
+          secret:
+            secretName: secret-env
+      containers:
+      - name: yii-migrate
+        image: yii-migrate:latest
+        volumeMounts:
+          - name: secret-volume
+            mountPath: /srv/app/.env
+            subPath: .env.backend
+            readOnly: true
+        command:
+          - php
+        args:
+          - yii
+          - migrate/up
+          - --interactive=0
+        resources:
+          limits:
+            cpu: 1000m
+            memory: 1024Mi

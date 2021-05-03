@@ -1,0 +1,81 @@
+steps:
+  # build container image
+  - name: gcr.io/cloud-builders/docker
+    id: Build image
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        docker build \
+          --build-arg SHORT_SHA_ARG=${SHORT_SHA} \
+          --build-arg BUILD_TIME_ARG=$(TZ=UTC-8 date +%Y%m%d.%H%M%S.%z) \
+          -t gcr.io/${PROJECT_ID}/${_IMAGE_NAME}:${SHORT_SHA} \
+          -t gcr.io/${PROJECT_ID}/${_IMAGE_NAME}:latest .
+        docker push gcr.io/${PROJECT_ID}/${_IMAGE_NAME}:${SHORT_SHA}
+        docker push gcr.io/${PROJECT_ID}/${_IMAGE_NAME}:latest
+
+  # # database migrate
+  # - name: gcr.io/cloud-builders/kubectl
+  #   id: Migrate job
+  #   entrypoint: bash
+  #   args:
+  #     - -c
+  #     - |
+  #       cat <<EOF | kubectl replace --force -f -
+  #       apiVersion: batch/v1
+  #       kind: Job
+  #       metadata:
+  #         name: migrate-job
+  #         namespace: ${_K8S_NAMESPACE}
+  #       spec:
+  #         backoffLimit: 5
+  #         template:
+  #           spec:
+  #             restartPolicy: Never
+  #             volumes:
+  #               - name: secret-volume
+  #                 secret:
+  #                   secretName: secret-env
+  #             containers:
+  #             - name: yii-migrate
+  #               image: gcr.io/${PROJECT_ID}/${_IMAGE_NAME}:${SHORT_SHA}
+  #               volumeMounts:
+  #                 - name: secret-volume
+  #                   mountPath: /srv/app/.env
+  #                   subPath: .env.backend
+  #                   readOnly: true
+  #               command:
+  #                 - php
+  #               args:
+  #                 - yii
+  #                 - migrate/up
+  #                 - --interactive=0
+  #       EOF
+
+  # deploy container image to GKE
+  - name: gcr.io/google.com/cloudsdktool/cloud-sdk:latest
+    id: Set image
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        gcloud container clusters get-credentials \
+          --zone "${_GKE_REGION}" "${_GKE_CLUSTER}"
+        kubectl set image deployment ${_K8S_DEPLOYMENT} \
+          ${_K8S_CONTAINER}=gcr.io/${PROJECT_ID}/${_IMAGE_NAME}:${SHORT_SHA} \
+          --namespace=${_K8S_NAMESPACE} \
+          --record
+        kubectl rollout status deployment ${_K8S_DEPLOYMENT} \
+          --namespace=${_K8S_NAMESPACE} \
+          --watch=true
+
+options:
+  substitutionOption: ALLOW_LOOSE
+
+substitutions:
+  _GKE_REGION: asia-east1
+  _GKE_CLUSTER: gke-cluster
+  _K8S_NAMESPACE: default
+  _K8S_DEPLOYMENT: backend-deploy
+  _K8S_CONTAINER: backend-app
+  _IMAGE_NAME: base-api

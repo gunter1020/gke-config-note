@@ -1,0 +1,48 @@
+# https://cloud.google.com/kubernetes-engine/docs/how-to/ingress-features
+apiVersion: cloud.google.com/v1
+kind: BackendConfig
+metadata:
+  name: my-web-backend-config
+spec:
+  timeoutSec: 30
+  connectionDraining:
+    drainingTimeoutSec: 15
+  healthCheck:
+    checkIntervalSec: 15
+    timeoutSec: 3
+    healthyThreshold: 1
+    unhealthyThreshold: 2
+    type: HTTP
+    requestPath: /
+    port: 80
+  sessionAffinity:
+    affinityType: GENERATED_COOKIE
+    affinityCookieTtlSec: 50
+  securityPolicy:
+    name: web-default-security
+  cdn:
+    enabled: true
+    cachePolicy:
+      includeHost: false
+      includeProtocol: false
+      includeQueryString: true
+  logging:
+    enable: true
+    sampleRate: 1
+---
+apiVersion: cloud.google.com/v1
+kind: BackendConfig
+metadata:
+  name: my-api-backend-config
+spec:
+  timeoutSec: 30
+  connectionDraining:
+    drainingTimeoutSec: 30
+  healthCheck:
+    checkIntervalSec: 15
+    timeoutSec: 3
+    healthyThreshold: 1
+    unhealthyThreshold: 2
+    type: HTTP
+    requestPath: /ping
+    port: 80
