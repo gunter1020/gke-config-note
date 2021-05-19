@@ -16,6 +16,10 @@ RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/bin/ 
 
 # PHP ini default
 ENV PHP_DATE_TIMEZONE Asia/Taipei
+ENV PHP_MEMORY_LIMIT 256M
+ENV PHP_POST_MAX_SIZE 10M
+ENV PHP_UPLOAD_MAX_FILESIZE 10M
+ENV PHP_MAX_FILE_UPLOADS 20
 ENV PHP_SESSION_SAVE_HANDLER files
 ENV PHP_SESSION_SAVE_PATH /var/lib/php/sessions
 ENV PHP_SESSION_COOKIE_HTTPONLY 1
